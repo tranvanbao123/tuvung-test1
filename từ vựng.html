@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Học Từ Vựng Tiếng Anh</title>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items center; min-height: 100vh; margin: 0; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); }
+    .container { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; width: 90%; max-width: 450px; }
+    .vocab { margin: 15px 0; font-size: 1.3em; color: #2c3e50; font-weight: 500; }
+    input { padding: 10px; width: 65%; margin-right: 10px; border: 2px solid #3498db; border-radius: 5px; font-size: 1em; }
+    button { padding: 10px 15px; cursor: pointer; background: #3498db; color: white; border: none; border-radius: 5px; margin: 5px; transition: background 0.3s; }
+    button:hover { background: #2980b9; }
+    .nav { margin: 15px 0; }
+    .hint, .stats { font-size: 0.95em; color: #7f8c8d; margin: 10px 0; }
+    .result { font-weight: 600; margin-top: 10px; }
+    .result.correct { color: #27ae60; }
+    .result.wrong { color: #e74c3c; }
+    .hidden { display: none; }
+    .wrong-list { margin-top: 20px; text-align: left; }
+    .wrong-list h4 { color: #e74c3c; font-size: 1.1em; }
+    .wrong-list ul { list-style-type: none; padding: 0; }
+    .wrong-list li { padding: 5px 0; color: #34495e; }
+    @media (max-width: 480px) { .container { padding: 15px; } input { width: 60%; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="vocab">Danh sách: <span id="currentIndex">1</span>/20<br>Từ vựng: <span id="vietnamese"></span></div>
+    <input type="text" id="answer" placeholder="Nhập tiếng Anh...">
+    <button onclick="checkAnswer()">Kiểm tra</button>
+    <div class="nav">
+      <button onclick="prevWord()">◄</button>
+      <button onclick="nextWord()">►</button>
+    </div>
+    <div class="hint" id="hint">Gợi ý: <span id="hintText"></span></div>
+    <button onclick="toggleAnswer()">Ẩn/Hiện Đáp Án</button>
+    <button onclick="pronounce()">Nghe Phát Âm</button>
+    <div class="stats" id="stats">Thời gian: <span id="time">0</span>s | Đúng: <span id="correct">0</span> | Sai: <span id="wrong">0</span> | %: <span id="percent">0</span>%</div>
+    <div class="result" id="result"></div>
+    <div class="wrong-list" id="wrongList">
+      <h4>Từ Đã Trả Lời Sai:</h4>
+      <ul id="wrongItems"></ul>
+    </div>
+  </div>
+
+  <script>
+    const words = [
+{ vietnamese: "Máy tính xách tay", english: "Laptop" },
+{ vietnamese: "Hướng dương", english: "Sunflower" },
+{ vietnamese: "Xổ số", english: "Lottery" },
+{ vietnamese: "Máy ảnh", english: "Camera" },
+{ vietnamese: "Mệt mỏi", english: "Tired" },
+{ vietnamese: "Chợ", english: "Market" },
+{ vietnamese: "Bài tập", english: "Exercise" },
+{ vietnamese: "Đội nhóm", english: "Team" },
+{ vietnamese: "Từ điển", english: "Dictionary" },
+{ vietnamese: "Nhiều", english: "Many / A lot" },
+{ vietnamese: "Ngại ngùng", english: "Shy" },
+{ vietnamese: "Tiếp tục", english: "Continue" },
+{ vietnamese: "Chuyến đi", english: "Trip" },
+{ vietnamese: "Đắt", english: "Expensive" },
+{ vietnamese: "Hòa đồng", english: "Sociable" },
+{ vietnamese: "Truyện tranh", english: "Comic" },
+{ vietnamese: "Món quà", english: "Present" },
+{ vietnamese: "Vẫn", english: "Still" },
+{ vietnamese: "Chậm rãi", english: "Slowly" },
+{ vietnamese: "Điểm số", english: "Score" },
+
+    ];
+    let currentIndex = 0;
+    let correctCount = 0;
+    let wrongCount = 0;
+    let hintCount = 0;
+    let time = 0;
+    let timer;
+    let wrongWords = [];
+
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    }
+    shuffle(words);
+
+    function updateDisplay() {
+      document.getElementById('currentIndex').textContent = currentIndex + 1;
+      document.getElementById('vietnamese').textContent = words[currentIndex].vietnamese;
+      document.getElementById('answer').value = '';
+      document.getElementById('hintText').textContent = '';
+      document.getElementById('result').textContent = '';
+      document.getElementById('result').className = 'result';
+      document.getElementById('answer').classList.remove('hidden');
+      updateWrongList();
+    }
+
+    function startTimer() {
+      timer = setInterval(() => {
+        time++;
+        document.getElementById('time').textContent = time;
+      }, 1000);
+    }
+
+    function checkAnswer() {
+      const userAnswer = document.getElementById('answer').value.trim().toLowerCase();
+      const correctAnswer = words[currentIndex].english.toLowerCase();
+      const resultElement = document.getElementById('result');
+      if (userAnswer === correctAnswer) {
+        resultElement.textContent = 'Chính xác ✓';
+        resultElement.className = 'result correct';
+        correctCount++;
+        nextWord();
+      } else {
+        wrongCount++;
+        hintCount++;
+        if (hintCount <= 1) {
+          resultElement.textContent = 'Sai X - Thử lại';
+          resultElement.className = 'result wrong';
+          document.getElementById('hintText').textContent = correctAnswer.slice(0, hintCount);
+        } else {
+          resultElement.textContent = 'Sai X - Đáp án: ' + correctAnswer;
+          resultElement.className = 'result wrong';
+          if (!wrongWords.some(w => w.vietnamese === words[currentIndex].vietnamese)) {
+            wrongWords.push({ vietnamese: words[currentIndex].vietnamese, english: correctAnswer });
+          }
+          nextWord();
+        }
+      }
+      updateStats();
+    }
+
+    function nextWord() {
+      currentIndex = (currentIndex + 1) % words.length;
+      hintCount = 0;
+      updateDisplay();
+    }
+
+    function prevWord() {
+      currentIndex = (currentIndex - 1 + words.length) % words.length;
+      hintCount = 0;
+      updateDisplay();
+    }
+
+    function toggleAnswer() {
+      const answerField = document.getElementById('answer');
+      if (answerField.classList.contains('hidden')) {
+        answerField.classList.remove('hidden');
+      } else {
+        answerField.classList.add('hidden');
+        document.getElementById('result').textContent = 'Đáp án: ' + words[currentIndex].english;
+      }
+    }
+
+    function pronounce() {
+      const utterance = new SpeechSynthesisUtterance(words[currentIndex].english);
+      utterance.lang = 'en-US';
+      utterance.rate = 0.9;
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function updateStats() {
+      const total = correctCount + wrongCount;
+      const percent = total ? (correctCount / total * 100).toFixed(1) : 0;
+      document.getElementById('correct').textContent = correctCount;
+      document.getElementById('wrong').textContent = wrongCount;
+      document.getElementById('percent').textContent = percent;
+    }
+
+    function updateWrongList() {
+      const wrongItems = document.getElementById('wrongItems');
+      wrongItems.innerHTML = '';
+      wrongWords.forEach(word => {
+        const li = document.createElement('li');
+        li.textContent = `${word.vietnamese}: ${word.english}`;
+        wrongItems.appendChild(li);
+      });
+    }
+
+    updateDisplay();
+    startTimer();
+  </script>
+</body>
+</html>
